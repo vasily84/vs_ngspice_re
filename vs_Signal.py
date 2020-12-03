@@ -3,15 +3,16 @@ import vs_globals as G
 import math
 
 class ModelSignal():
-    def __init__(self):
+    def __init__(self, title=''):
         self.Voltages = np.zeros(G.signal_POINT_COUNT)
         self.Currents = np.zeros_like(self.Voltages)
-        self.initWave()
+        self.initWave() 
+        self.Title = title 
     
     def initWave(self,V=G.signal_Voltage,dt=G.signal_dt ):
         p = G.signal_POINT_COUNT
-        time = np.linspace(0,dt*p,p,False)
-        self.Voltages = V*np.sin(G.signal_wfreq*time)
+        wtime = np.linspace(0,2.*np.pi,p,False)
+        self.Voltages = V*np.sin(wtime)
         self.Currents = np.zeros_like(self.Voltages)
 
     def copy(self,VCsignal):

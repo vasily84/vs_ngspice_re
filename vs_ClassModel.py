@@ -1,23 +1,45 @@
 import numpy as np
+import scipy.optimize as spo
+import json
+
 from vs_utils import uuid_str
 import vs_globals as G
 import vs_Signal
-import json
 
+
+# pylint: disable=E1101 # игнор линтинга numpy
 
 class ClassModel():
-    def run_simulation(self,inputSignal):
+    def run_simulation(self,VCSignal=None):
+        if VCSignal is None:
+            VCSignal = G.modelSignal
+
         self.save_model_file()
-        self.evaluate_model(inputSignal)
-        inputSignal.save(self.signalFileName)
+        self.evaluate_model(VCSignal)
+        VCSignal.save(self.signalFileName)
+        self.simulationResult = VCSignal
         return 0
 
-    def run_scalar_optimization(self,targetSignal):
-        pass
+    def run_scalar_optimization(self):
+        Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,bounds=self.Xi_bounds)
+        return Xres
 
     def optimization_subroutine(self,Xi):
-        pass 
+        self.newFileName()
+        self.setXi(Xi)
+        self.run_simulation()
+        XLoss = self.simulationResult.scalar_cmp(G.targetSignal)
+        return XLoss
     
+    def save_model_file(self):
+        with open(self.fileName, 'w') as newFile:   
+            json.dump(self.to_list(),newFile)   
+
+    def load_model_from_file(self):   
+        with open(self.fileName, "r") as read_file:
+            json_list = json.load(read_file) 
+        self.from_list(json_list)
+     
     def newFileName(self):
         coreName = uuid_str()
         self.fileName = coreName+".m_json"
@@ -25,30 +47,135 @@ class ClassModel():
 
     def __init__(self):
         self.newFileName()
-
+        #self.simulationResult = None
 
 
 class ClassModel_R(ClassModel):
-    def __init__(self, R=100):
+    def __init__(self, R1=100):
         super().__init__()
-        self.R = R
+        self.R1 = R1
+        self.Xi_values = [R1]
+        self.Xi_bounds = [(1e-2*G.small_R,None)]
 
-    def save_model_file(self):
-        json_list = {"model_type":"R","R":self.R}
-        with open(self.fileName, 'w') as newFile:   
-            json.dump(json_list,newFile)   
+    def to_list(self):
+        json_list = {"model_type":"R","R1":self.R1}
+        return json_list
 
-    def load_model_from_file(self):   
-        with open(self.fileName, "r") as read_file:
-            jsonModel = json.load(read_file) 
-        self.R = jsonModel["R"]
-        
-    def evaluate_model(self,Signal):
-        Signal.Currents = Signal.Voltages/self.R
+    def from_list(self,json_list):
+        self.R1 = json_list["R1"]
+   
+    def setXi(self,Xi):
+        self.R1 = Xi[0]
+
+    def evaluate_model(self,VCSignal):
+        VCSignal.Currents = VCSignal.Voltages/self.R1
 
     def init_starts_from_signal(self,VCSignal):
-        """найтии НУ для схемы исходя из сигнала"""
-        self.R = 200 #!!
+        """найти НУ для схемы исходя из сигнала"""
+        self.R1 = 200 #!! # еще не реализовано
+
+class ClassModel_RD(ClassModel):
+    def __init__(self,R2=100):
+        super().__init__()
+        self.R2 = R2
+        self.Xi_values = [R2]
+        self.Xi_bounds = [(1e-2*G.small_R,None)]
+
+    def to_list(self):
+        json_list = {"model_type":"RD","R2":self.R2}
+        return json_list
+
+    def from_list(self,json_list):
+        self.R2 = json_list["R2"]
+
+    def setXi(self,Xi):
+        self.R2 = Xi[0]
+
+    def evaluate_model(self,VCSignal):
+        # переписать #
+        VCSignal.Currents[:] = 0.
+        for i in range(len(VCSignal.Voltages)):
+            v = VCSignal.Voltages[i]
+            if v>=G.DIODE_VOLTAGE:
+                VCSignal.Currents[i] = (v-G.DIODE_VOLTAGE)/self.R2
+        
+class ClassModel_DR(ClassModel):
+    def __init__(self, R3=100):
+        super().__init__()
+        self.R3=R3
+        self.Xi_values = [R3]
+        self.Xi_bounds = [(1e-2*G.small_R,None)]
+
+    def to_list(self):
+        json_list = {"model_type":"DR","R3":self.R3}
+        return json_list
+
+    def from_list(self,json_list):
+        self.R3 = json_list["R3"]
+
+    def setXi(self,Xi):
+        self.R3 = Xi[0]
+
+    def evaluate_model(self,VCSignal):
+        # переписать #
+        VCSignal.Currents[:] = 0.
+        for i in range(len(VCSignal.Voltages)):
+            v = VCSignal.Voltages[i]
+            if v<=-G.DIODE_VOLTAGE:
+                VCSignal.Currents[i] = (v+G.DIODE_VOLTAGE)/self.R3
+
+class ClassModel_R1R2R3(ClassModel):
+    def __init__(self, R1=100,R2=100,R3=100):
+        super().__init__()
+        self.R1=R1
+        self.R2=R2
+        self.R3=R3
+        self.Xi_values = [R1,R2,R3]
+        self.Xi_bounds = [(1e-2*G.small_R,None),(1e-2*G.small_R,None),(1e-2*G.small_R,None)]
+
+    def to_list(self):
+        json_list = {"model_type":"R1r2r3","R1":self.R1,"R2":self.R2,"R3":self.R3}
+        return json_list
+
+    def from_list(self,json_list):
+        self.R1 = json_list["R1"]
+        self.R2 = json_list["R2"]
+        self.R3 = json_list["R3"]
+
+    def setXi(self,Xi):
+        self.R1 = Xi[0]
+        self.R2 = Xi[1]
+        self.R3 = Xi[2]
+ 
+    def evaluate_model(self,VCSignal):
+        for i in range(len(VCSignal.Voltages)):
+            v = VCSignal.Voltages[i]
+            VCSignal.Currents[i] = self.I_from_VR1R2R3(v,self.R1,self.R2,self.R3)
+                       
+    # ток через нашу упрощенную цепь - подробности см. в проекте vs_spice_solver
+    def I_from_VR1R2R3(self,V,R1,R2,R3):
+        I = V/(R2)
+        V2 = R2*I
+        INIT_Rcs = 0. 
+
+        # диод VD1 открыт
+        if V2>=G.DIODE_VOLTAGE:
+            up_part = V*(R1+R2)-R2*G.DIODE_VOLTAGE
+            down_part = R1*R2+R1*INIT_Rcs+R2*INIT_Rcs
+            Id = up_part/down_part
+            return Id
+        
+        # диод VD3 открыт
+        if V2 <=-G.DIODE_VOLTAGE:
+            up_part = V*(R3+R2)+R2*G.DIODE_VOLTAGE
+            down_part = R3*R2+R3*INIT_Rcs+R2*INIT_Rcs
+            Id = up_part/down_part
+            return Id
+        
+        # случай, когда диоды VD1 и VD3 закрыты - просто закон ома
+        return I
+
+
 
 
 

@@ -5,15 +5,26 @@
 import numpy as np
 import os
 import vs_globals as G
+import vs_Signal
+import vs_ClassModel
+from vs_utils import myplot
 
 def init():
-    print(os.getcwd())
+    if os.path.isdir(G.work_dir)==False:
+        os.mkdir(G.work_dir)
     os.chdir(G.work_dir)
-    print(os.getcwd())
-    
+
+    G.targetSignal = vs_Signal.ModelSignal('target')
+    targetModel = vs_ClassModel.ClassModel_R()
+    targetModel.R1 = 333.
+    targetModel.run_simulation(G.targetSignal)
+    G.modelSignal = vs_Signal.ModelSignal('model')
+    G.modelSignal.copy(G.targetSignal)
+    G.modelSignal.Currents[:] = 0
 
 def do_job():
     pass
+    
 
 def release():
     pass

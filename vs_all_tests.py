@@ -7,7 +7,9 @@ import vs_ClassModel
 import vs_Signal
 import os
 import vs_globals as G
-from vs_utils import uuid_str
+from vs_utils import uuid_str,myplot
+
+# pylint: disable=E1101 # игнор линтинга numpy
 
 class test_ClassObject(unittest.TestCase):
     def setUp(self):
@@ -42,30 +44,77 @@ class test_ClassModel_R(unittest.TestCase):
     def test_saveAndLoad(self):
         B = vs_ClassModel.ClassModel_R()
         r1 = np.random.random()
-        B.R = r1
+        B.R1 = r1
         B.save_model_file()
-        B.R = np.random.random()
-        equ_false1 = B.R==r1
+        B.R1 = np.random.random()
+        equ_false1 = (B.R1==r1)
         B.load_model_from_file()
-        equ_true1 = B.R==r1   
+        equ_true1 = (B.R1==r1)   
         os.remove(B.fileName)
-        self.assertTrue(equ_false1==False and equ_true1==True)
+        self.assertTrue((not equ_false1) and equ_true1)
 
-
-    
 
 class test_ModelSignal(unittest.TestCase):
     def setUp(self):
         pass
+
+    def test_scalar_optimization_R1R2R3(self):
+        modelA = vs_ClassModel.ClassModel_R1R2R3()
+        targetModel = vs_ClassModel.ClassModel_R1R2R3()
+
+        G.targetSignal = vs_Signal.ModelSignal('target')
+        #targetModel = vs_ClassModel.ClassModel_DR()
+        r1 = G.small_R+np.random.random()*1e3
+        r2 = G.small_R+np.random.random()*1e3
+        r3 = G.small_R+np.random.random()*1e3
+        targetModel.setXi([r1,r2,r3])
+        targetModel.run_simulation(G.targetSignal)
+        G.modelSignal = vs_Signal.ModelSignal('model')
+        G.modelSignal.copy(G.targetSignal)
+        G.modelSignal.Currents[:] = 0
+        xres = modelA.run_scalar_optimization()
+        myplot(G.targetSignal,G.modelSignal)
+        print(xres)
+        self.assertTrue(xres.success)
+
+    def child_scalar_optimization_1d(self,modelA,targetModel):
+        G.targetSignal = vs_Signal.ModelSignal('target')
+        targetModel.setXi([G.small_R+np.random.random()*1e3])
+        targetModel.run_simulation(G.targetSignal)
+        G.modelSignal = vs_Signal.ModelSignal('model')
+        G.modelSignal.copy(G.targetSignal)
+        G.modelSignal.Currents[:] = 0
+        xres = modelA.run_scalar_optimization()
+        myplot(G.targetSignal,G.modelSignal)
+        print(xres)
+        return xres
+
+    def test_scalar_optimization_R(self):
+        A = vs_ClassModel.ClassModel_R()
+        target = vs_ClassModel.ClassModel_R()
+        xres = self.child_scalar_optimization_1d(A,target)
+        self.assertTrue(xres.success)
+        
+    def test_scalar_optimization_RD(self):
+        A = vs_ClassModel.ClassModel_DR()
+        target = vs_ClassModel.ClassModel_DR()
+        xres = self.child_scalar_optimization_1d(A,target)
+        self.assertTrue(xres.success)
+
+    def test_scalar_optimization_DR(self):
+        A = vs_ClassModel.ClassModel_DR()
+        target = vs_ClassModel.ClassModel_DR()
+        xres = self.child_scalar_optimization_1d(A,target)
+        self.assertTrue(xres.success)
 
     def test_saveAndLoad(self):
         fileName = uuid_str()+'.npz'
         B = vs_Signal.ModelSignal()
         C = vs_Signal.ModelSignal()
         B.Voltages = B.Voltages*np.random.random()
-        B.Currents = 1.*np.random.random()
+        B.Currents[:] = 1.*np.random.random()
         C.Voltages = C.Voltages*np.random.random()
-        C.Currents = 1.*np.random.random()
+        C.Currents[:] = 1.*np.random.random()
         
         equ_false1 = np.array_equal(C.Voltages,B.Voltages)
         equ_false2 = np.array_equal(C.Currents,B.Currents)
@@ -74,7 +123,7 @@ class test_ModelSignal(unittest.TestCase):
         equ_true1 = np.array_equal(C.Voltages,B.Voltages)
         equ_true2 = np.array_equal(C.Currents,B.Currents)
         os.remove(fileName)
-        self.assertTrue(equ_false1==False and equ_false2==False and equ_true1==True and equ_true2==True)
+        self.assertTrue((not equ_false1) and (not equ_false2) and equ_true1 and equ_true2)
 
 
 if __name__=='__main__':
