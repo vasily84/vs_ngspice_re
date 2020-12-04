@@ -27,9 +27,20 @@ class ModelSignal():
     def save(self,fileName):
         np.savez(fileName,Voltages=self.Voltages,Currents=self.Currents)
 
-    def scalar_cmp(self,signal2):
+    def scalar_cmp_L(self,signal2):
         """скалярное сравнение сигналов"""
         sub = np.copy(self.Currents)
         sub = sub-signal2.Currents
         sub = np.abs(sub)
-        return math.fsum(sub)
+        return math.fsum(sub)/len(signal2.Currents)
+
+    def scalar_cmp_L2(self,signal2):
+        """скалярное сравнение сигналов"""
+        sub = np.copy(self.Currents)
+        sub = sub-signal2.Currents
+        N = len(signal2.Currents)
+        return math.fsum(sub*sub)/(N*N)
+
+    def scalar_cmp(self,signal2):
+        return self.scalar_cmp_L(signal2)
+

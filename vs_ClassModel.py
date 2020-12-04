@@ -16,6 +16,8 @@ class ClassModel():
 
         self.save_model_file()
         self.evaluate_model(VCSignal)
+        Noise = G.signal_CurrentNoiseAmplitude*np.random.rand(len(VCSignal.Currents))
+        VCSignal.Currents = Noise+VCSignal.Currents
         VCSignal.save(self.signalFileName)
         self.simulationResult = VCSignal
         return 0
@@ -49,7 +51,6 @@ class ClassModel():
         self.newFileName()
         #self.simulationResult = None
 
-
 class ClassModel_R(ClassModel):
     def __init__(self, R1=100):
         super().__init__()
@@ -73,6 +74,42 @@ class ClassModel_R(ClassModel):
     def init_starts_from_signal(self,VCSignal):
         """найти НУ для схемы исходя из сигнала"""
         self.R1 = 200 #!! # еще не реализовано
+
+class ClassModel_Rphase(ClassModel):
+    def __init__(self, R1=100,phase=0):
+        super().__init__()
+        self.R1 = R1
+        self.phase = phase # сдвиг фазы считается в точках в наборе  
+        self.Xi_values = [R1, phase]
+        self.Xi_bounds = None #[(1e-2*G.small_R, None)]
+
+    def to_list(self):
+        json_list = {"model_type":"Rphase","R1":self.R1,"phase":self.phase}
+        return json_list
+
+    def from_list(self,json_list):
+        self.R1 = json_list["R1"]
+        self.phase = json_list["phase"]
+   
+    def setXi(self,Xi):
+        self.R1 = Xi[0]
+        self.phase = Xi[1]
+
+    def evaluate_model(self,VCSignal):
+        buf = np.empty_like(VCSignal.Voltages)
+        buf = VCSignal.Voltages/self.R1
+        #фазовый сдвиг, ток запаздывает за напряжением
+        Nshift = -int(self.phase)
+        if Nshift==0:
+            VCSignal.Currents[:]=buf[:]
+        else:
+            VCSignal.Currents[Nshift:] = buf[:-Nshift]
+            VCSignal.Currents[:Nshift] = buf[-Nshift:]
+
+    def init_starts_from_signal(self,VCSignal):
+        """найти НУ для схемы исходя из сигнала"""
+        self.R1 = 200 #!! # еще не реализовано
+
 
 class ClassModel_RD(ClassModel):
     def __init__(self,R2=100):

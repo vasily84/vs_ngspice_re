@@ -11,17 +11,18 @@ from vs_utils import uuid_str,myplot
 
 # pylint: disable=E1101 # игнор линтинга numpy
 
+@unittest.skip("Skip test_ClassObject")
 class test_ClassObject(unittest.TestCase):
     def setUp(self):
         self.cb = vs_ClassObject.ClassObject()
 
-    def NOtest_run_simulation(self):
+    def test_run_simulation(self):
         self.cb.save_model_file()
         runResult = self.cb.run_simulation()
         os.remove(self.cb.fileName)
         self.assertTrue(runResult==0)
 
-    def NOtest_write_file(self):
+    def test_write_file(self):
         listDir1 = os.listdir('.')
         self.cb.save_model_file()
         listDir2 = os.listdir('.')
@@ -29,6 +30,8 @@ class test_ClassObject(unittest.TestCase):
         os.remove(self.cb.fileName)
         self.assertTrue(cmpDir)
 
+
+@unittest.skip("Skip test_ClassModel_R")
 class test_ClassModel_R(unittest.TestCase):
     def setUp(self):
         self.A = vs_ClassModel.ClassModel_R()
@@ -54,10 +57,33 @@ class test_ClassModel_R(unittest.TestCase):
         self.assertTrue((not equ_false1) and equ_true1)
 
 
-class test_ModelSignal(unittest.TestCase):
-    def setUp(self):
-        pass
+class test_ClassModel_Rphase(unittest.TestCase):
+    def test_scalar_optimization_Rphase(self):
+        modelA = vs_ClassModel.ClassModel_Rphase(10,1)
+        targetModel = vs_ClassModel.ClassModel_Rphase(130,10)
 
+        G.targetSignal = vs_Signal.ModelSignal('target')
+        targetModel.run_simulation(G.targetSignal)
+        G.modelSignal = vs_Signal.ModelSignal('model')
+        G.modelSignal.copy(G.targetSignal)
+        G.modelSignal.Currents[:] = 0
+        xres = modelA.run_scalar_optimization()
+        myplot(G.targetSignal,G.modelSignal)
+        print(xres)
+        self.assertTrue(xres.success)
+
+    @unittest.skip("")
+    def test_phaseShift(self):
+        targetModel = vs_ClassModel.ClassModel_Rphase(1.,10)
+        G.targetSignal = vs_Signal.ModelSignal('target')
+        targetModel.run_simulation(G.targetSignal)
+        myplot(G.targetSignal,G.modelSignal)
+        myplot((G.targetSignal.Voltages),(G.targetSignal.Currents))
+        self.assertTrue(True)
+        
+
+#@unittest.skip("Skip test_ModelSignal")
+class test_ModelSignal(unittest.TestCase):
     def test_scalar_optimization_R1R2R3(self):
         modelA = vs_ClassModel.ClassModel_R1R2R3()
         targetModel = vs_ClassModel.ClassModel_R1R2R3()
@@ -94,7 +120,7 @@ class test_ModelSignal(unittest.TestCase):
         target = vs_ClassModel.ClassModel_R()
         xres = self.child_scalar_optimization_1d(A,target)
         self.assertTrue(xres.success)
-        
+
     def test_scalar_optimization_RD(self):
         A = vs_ClassModel.ClassModel_DR()
         target = vs_ClassModel.ClassModel_DR()

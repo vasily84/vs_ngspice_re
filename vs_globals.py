@@ -6,8 +6,9 @@ model_dir = "model_dir"
 work_dir = model_dir
 
 signal_Voltage = 2.5
-signal_POINT_COUNT = 100
+signal_POINT_COUNT = 360
 signal_dt = 1e-5
+signal_CurrentNoiseAmplitude = 0.
 
 targetSignal = None
 modelSignal = None
