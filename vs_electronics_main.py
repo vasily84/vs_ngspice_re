@@ -8,12 +8,14 @@ import vs_globals as G
 import vs_Signal
 import vs_ClassModel
 from vs_utils import myplot
+import vs_dataset
 
 def init():
     if os.path.isdir(G.work_dir)==False:
         os.mkdir(G.work_dir)
     os.chdir(G.work_dir)
-
+    G.dataset = vs_dataset.vs_dataset()
+    
     G.targetSignal = vs_Signal.ModelSignal('target')
     targetModel = vs_ClassModel.ClassModel_R()
     targetModel.R1 = 333.

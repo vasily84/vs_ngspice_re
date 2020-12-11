@@ -15,3 +15,5 @@ modelSignal = None
 
 DIODE_VOLTAGE = 0.6
 small_R = 1e-6
+
+dataset = None

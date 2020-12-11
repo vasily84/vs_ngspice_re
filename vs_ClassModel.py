@@ -19,11 +19,13 @@ class ClassModel():
         Noise = G.signal_CurrentNoiseAmplitude*np.random.rand(len(VCSignal.Currents))
         VCSignal.Currents = Noise+VCSignal.Currents
         VCSignal.save(self.signalFileName)
+        G.dataset.writerow([self.baseName]+VCSignal.get_features_row()+[self.kind])
         self.simulationResult = VCSignal
         return 0
 
     def run_scalar_optimization(self):
-        Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,bounds=self.Xi_bounds)
+        Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,bounds=self.Xi_bounds,method='Powell')
+        #Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,bounds=self.Xi_bounds)
         return Xres
 
     def optimization_subroutine(self,Xi):
@@ -43,9 +45,9 @@ class ClassModel():
         self.from_list(json_list)
      
     def newFileName(self):
-        coreName = uuid_str()
-        self.fileName = coreName+".m_json"
-        self.signalFileName = coreName+".npz"
+        self.baseName = uuid_str()
+        self.fileName = self.baseName+".m_json"
+        self.signalFileName = self.baseName+".npz"
 
     def __init__(self):
         self.newFileName()
@@ -57,6 +59,7 @@ class ClassModel_R(ClassModel):
         self.R1 = R1
         self.Xi_values = [R1]
         self.Xi_bounds = [(1e-2*G.small_R,None)]
+        self.kind = 'R'
 
     def to_list(self):
         json_list = {"model_type":"R","R1":self.R1}
@@ -82,6 +85,7 @@ class ClassModel_Rphase(ClassModel):
         self.phase = phase # сдвиг фазы считается в точках в наборе  
         self.Xi_values = [R1, phase]
         self.Xi_bounds = None #[(1e-2*G.small_R, None)]
+        self.kind = 'Rphase'
 
     def to_list(self):
         json_list = {"model_type":"Rphase","R1":self.R1,"phase":self.phase}
@@ -117,6 +121,7 @@ class ClassModel_RD(ClassModel):
         self.R2 = R2
         self.Xi_values = [R2]
         self.Xi_bounds = [(1e-2*G.small_R,None)]
+        self.kind = 'RD'
 
     def to_list(self):
         json_list = {"model_type":"RD","R2":self.R2}
@@ -142,6 +147,7 @@ class ClassModel_DR(ClassModel):
         self.R3=R3
         self.Xi_values = [R3]
         self.Xi_bounds = [(1e-2*G.small_R,None)]
+        self.kind = 'DR'
 
     def to_list(self):
         json_list = {"model_type":"DR","R3":self.R3}
@@ -169,6 +175,7 @@ class ClassModel_R1R2R3(ClassModel):
         self.R3=R3
         self.Xi_values = [R1,R2,R3]
         self.Xi_bounds = [(1e-2*G.small_R,None),(1e-2*G.small_R,None),(1e-2*G.small_R,None)]
+        self.kind = 'R1R2R3'
 
     def to_list(self):
         json_list = {"model_type":"R1r2r3","R1":self.R1,"R2":self.R2,"R3":self.R3}
