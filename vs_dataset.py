@@ -25,5 +25,8 @@ class vs_dataset:
                 title.append('angle_{}'.format(i))
 
             title.append('kind')
+            title.append('loss L2')
+            title.append('loss L1')
+            
             self.writerow(title)
 

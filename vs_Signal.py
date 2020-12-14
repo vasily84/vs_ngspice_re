@@ -49,6 +49,9 @@ class ModelSignal():
     def scalar_cmp(self,baseSignal):
         return self.scalar_cmp_L(baseSignal)
 
+    def get_loss_row(self,baseSignal):
+        return [self.scalar_cmp_L(baseSignal),self.scalar_cmp_L2(baseSignal)]
+    
     def get_features_row(self):
         """ измерить признаки сигнала """
         N = len(self.Currents) # число отсчетов
@@ -67,7 +70,5 @@ class ModelSignal():
         
         return row
 
-    def get_features_row_head(self):
-        ['csumm','c2summ']
 
 

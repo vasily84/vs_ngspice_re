@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import vs_Signal
 
 def uuid_str():
-    return str(uuid4())
+    return uuid4().hex
 
     
 def myplot(*args):
@@ -22,5 +22,16 @@ def myplot(*args):
 
     plt.legend(loc='best')
     plt.show()
+
+def begin_plot():
+    pass
+
+def end_plot():
+    pass
+
+def update_plot():
+    pass
+
+    
 
 

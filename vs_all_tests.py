@@ -8,6 +8,7 @@ import vs_Signal
 import os
 import vs_globals as G
 from vs_utils import uuid_str,myplot
+import vs_plot
 
 # pylint: disable=E1101 # игнор линтинга numpy
 
@@ -31,7 +32,7 @@ class test_ClassObject(unittest.TestCase):
         self.assertTrue(cmpDir)
 
 
-@unittest.skip("Skip test_ClassModel_R")
+#@unittest.skip("Skip test_ClassModel_R")
 class test_ClassModel_R(unittest.TestCase):
     def setUp(self):
         self.A = vs_ClassModel.ClassModel_R()
@@ -56,7 +57,7 @@ class test_ClassModel_R(unittest.TestCase):
         os.remove(B.fileName)
         self.assertTrue((not equ_false1) and equ_true1)
 
-
+#@unittest.skip("Skip test_Rphase")
 class test_ClassModel_Rphase(unittest.TestCase):
     def test_scalar_optimization_Rphase(self):
         modelA = vs_ClassModel.ClassModel_Rphase(10,1)
@@ -68,8 +69,6 @@ class test_ClassModel_Rphase(unittest.TestCase):
         G.modelSignal.copy(G.targetSignal)
         G.modelSignal.Currents[:] = 0
         xres = modelA.run_scalar_optimization()
-        myplot(G.targetSignal,G.modelSignal)
-        print(xres)
         self.assertTrue(xres.success)
 
     @unittest.skip("")
@@ -99,8 +98,6 @@ class test_ModelSignal(unittest.TestCase):
         G.modelSignal.copy(G.targetSignal)
         G.modelSignal.Currents[:] = 0
         xres = modelA.run_scalar_optimization()
-        myplot(G.targetSignal,G.modelSignal)
-        print(xres)
         self.assertTrue(xres.success)
 
     def child_scalar_optimization_1d(self,modelA,targetModel):
@@ -111,8 +108,6 @@ class test_ModelSignal(unittest.TestCase):
         G.modelSignal.copy(G.targetSignal)
         G.modelSignal.Currents[:] = 0
         xres = modelA.run_scalar_optimization()
-        myplot(G.targetSignal,G.modelSignal)
-        print(xres)
         return xres
 
     def test_scalar_optimization_R(self):
@@ -151,6 +146,27 @@ class test_ModelSignal(unittest.TestCase):
         os.remove(fileName)
         self.assertTrue((not equ_false1) and (not equ_false2) and equ_true1 and equ_true2)
 
+@unittest.skip("Skip test_ModelSignal")
+class test_CInteractivePlot(unittest.TestCase):
+    def test_1(self):
+        B = vs_Signal.ModelSignal()
+        C = vs_Signal.ModelSignal()
+        B.Voltages = B.Voltages*np.random.random()
+        B.Currents[:] = 1.*np.random.random()
+        C.Voltages = C.Voltages*np.random.random()
+        C.Currents[:] = 1.*np.random.random()
+        out = vs_plot.InteractivePlot()
+        out.begin()
+        for _ in range(10):
+            B.Voltages = B.Voltages*np.random.random()
+            B.Currents[:] = 1.*np.random.random()
+            C.Voltages = C.Voltages*np.random.random()
+            C.Currents[:] = 1.*np.random.random()
+            out.plot(B,C)
+            
+        out.end()
+
+        self.assertTrue(True)
 
 if __name__=='__main__':
     vs_electronics_main.init()
