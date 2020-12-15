@@ -23,17 +23,19 @@ class ClassModel():
         
         row = [self.baseName]+VCSignal.get_features_row()
         row.append(self.kind)
-        row.append(VCSignal.get_loss_row(G.targetSignal))
+        Loss = VCSignal.get_loss_row(G.targetSignal)
+        row = row+Loss
         G.dataset.writerow(row)
         
         self.simulationResult = VCSignal
 
 
-    def run_scalar_optimization(self,myplt = None):
+    def run_scalar_optimization(self):
         self.plt = vs_plot.InteractivePlot()
         self.plt.begin()
         self.runCounter = 0 # счетчик числа вызовов минимизируемой
-        Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,bounds=self.Xi_bounds)
+        #Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,bounds=self.Xi_bounds)
+        Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,method='Powell')
         self.plt.end()
         return Xres
 
@@ -49,7 +51,8 @@ class ClassModel():
 
         if(XLoss < self.minXLoss):
             self.minXLoss = XLoss
-            self.plt.plot(G.modelSignal,G.targetSignal)
+
+        self.plt.plot(G.modelSignal,G.targetSignal)
             
 
         return XLoss

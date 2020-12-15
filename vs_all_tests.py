@@ -32,7 +32,7 @@ class test_ClassObject(unittest.TestCase):
         self.assertTrue(cmpDir)
 
 
-#@unittest.skip("Skip test_ClassModel_R")
+@unittest.skip("Skip test_ClassModel_R")
 class test_ClassModel_R(unittest.TestCase):
     def setUp(self):
         self.A = vs_ClassModel.ClassModel_R()
@@ -57,7 +57,7 @@ class test_ClassModel_R(unittest.TestCase):
         os.remove(B.fileName)
         self.assertTrue((not equ_false1) and equ_true1)
 
-#@unittest.skip("Skip test_Rphase")
+@unittest.skip("Skip test_Rphase")
 class test_ClassModel_Rphase(unittest.TestCase):
     def test_scalar_optimization_Rphase(self):
         modelA = vs_ClassModel.ClassModel_Rphase(10,1)
@@ -82,7 +82,7 @@ class test_ClassModel_Rphase(unittest.TestCase):
         
 
 #@unittest.skip("Skip test_ModelSignal")
-class test_ModelSignal(unittest.TestCase):
+class test_Model_scalar_optimization(unittest.TestCase):
     def test_scalar_optimization_R1R2R3(self):
         modelA = vs_ClassModel.ClassModel_R1R2R3()
         targetModel = vs_ClassModel.ClassModel_R1R2R3()
@@ -128,6 +128,8 @@ class test_ModelSignal(unittest.TestCase):
         xres = self.child_scalar_optimization_1d(A,target)
         self.assertTrue(xres.success)
 
+@unittest.skip("Skip test_ModelSignal")
+class test_ModelSignal(unittest.TestCase):
     def test_saveAndLoad(self):
         fileName = uuid_str()+'.npz'
         B = vs_Signal.ModelSignal()
@@ -145,6 +147,23 @@ class test_ModelSignal(unittest.TestCase):
         equ_true2 = np.array_equal(C.Currents,B.Currents)
         os.remove(fileName)
         self.assertTrue((not equ_false1) and (not equ_false2) and equ_true1 and equ_true2)
+
+    def test_signal_xy2(self):
+        B = vs_Signal.ModelSignal()
+        Ampl = 1
+        Noise = Ampl*np.random.rand(len(B.Currents))
+        B.Currents = np.copy(B.Voltages)
+        B.Currents = B.Currents+Noise
+        
+        C = vs_Signal.ModelSignal()
+        Noise = Ampl*np.random.rand(len(C.Currents))
+        C.Currents = np.copy(C.Voltages)
+        C.Currents = C.Currents+Noise
+        B.scalar_cmp_xy2(C)
+        myplot(B.Currents,C.Currents)
+        self.assertTrue(True)
+
+
 
 @unittest.skip("Skip test_ModelSignal")
 class test_CInteractivePlot(unittest.TestCase):
