@@ -9,6 +9,9 @@ class ModelSignal():
         self.Currents = np.zeros_like(self.Voltages)
         self.initWave() 
         self.Title = title 
+        # функции меры, которая используется в скалярной оптимизации
+        #self.scalar_cmp = self.scalar_cmp_xy
+        self.scalar_cmp = self.scalar_cmp_L2
     
     def initWave(self,V=G.signal_Voltage,dt=G.signal_dt ):
         p = G.signal_POINT_COUNT
@@ -30,18 +33,17 @@ class ModelSignal():
 
     def scalar_cmp_xy(self,baseSignal):
         N = len(self.Currents)
-        Lij1 = np.ndarray(shape=(N,N))
         norm_c = np.max(baseSignal.Currents)-np.min(baseSignal.Currents)
         norm_v = np.max(baseSignal.Voltages)-np.min(baseSignal.Voltages)
 
-        # вычисляем матрицу квадратов расстояний
-        for i in range(N):
-            for j in range(N):
-                v1 = self.Voltages[i]
-                c1 = self.Currents[i]
-                v2 = baseSignal.Voltages[j]
-                c2 = baseSignal.Currents[j]
-                Lij1[i,j] = (np.abs(v1-v2)/norm_v)+(np.abs(c1-c2)/norm_c)**2
+        # расстояние в пространстве между точками
+        def Lij1(i,j):
+            v1 = self.Voltages[i]
+            c1 = self.Currents[i]
+            v2 = baseSignal.Voltages[j]
+            c2 = baseSignal.Currents[j]
+            res = np.sqrt(((v1-v2)/norm_v)**2+((c1-c2)/norm_c)**2)
+            return res
 
         # вычисляем сумму по наиболее близким
         used_jj = set()
@@ -50,11 +52,11 @@ class ModelSignal():
             setJ = (set(range(N))-used_jj)
             j0 = setJ.pop()
             setJ.add(j0)
-            Lmin = Lij1[i,j0]
+            Lmin = Lij1(i,j0)
             j_min = j0
             for j in setJ:                 
-                if Lij1[i,j] <Lmin:
-                    Lmin = Lij1[i,j]
+                if Lij1(i,j) <Lmin:
+                    Lmin = Lij1(i,j)
                     j_min = j
 
             used_jj.add(j_min)
@@ -66,18 +68,17 @@ class ModelSignal():
     def scalar_cmp_xy2(self,baseSignal):
         """вычислить функцию потерь для шумного сигнала."""
         N = len(self.Currents)
-        Lij2 = np.ndarray(shape=(N,N))
         norm_c = np.max(baseSignal.Currents)-np.min(baseSignal.Currents)
         norm_v = np.max(baseSignal.Voltages)-np.min(baseSignal.Voltages)
-
-        # вычисляем матрицу квадратов расстояний
-        for i in range(N):
-            for j in range(N):
-                v1 = self.Voltages[i]
-                c1 = self.Currents[i]
-                v2 = baseSignal.Voltages[j]
-                c2 = baseSignal.Currents[j]
-                Lij2[i,j] = ((v1-v2)/norm_v)**2+((c1-c2)/norm_c)**2
+        
+        # расстояние в пространстве между точками
+        def Lij2(i,j):
+            v1 = self.Voltages[i]
+            c1 = self.Currents[i]
+            v2 = baseSignal.Voltages[j]
+            c2 = baseSignal.Currents[j]
+            res = ((v1-v2)/norm_v)**2+((c1-c2)/norm_c)**2
+            return res
 
         # вычисляем сумму по наиболее близким
         used_jj = set()
@@ -86,18 +87,17 @@ class ModelSignal():
             setJ = (set(range(N))-used_jj)
             j0 = setJ.pop()
             setJ.add(j0)
-            Lmin = Lij2[i,j0]
+            Lmin = Lij2(i,j0)
             j_min = j0
             for j in setJ:                 
-                if Lij2[i,j] <Lmin:
-                    Lmin = Lij2[i,j]
+                if Lij2(i,j) <Lmin:
+                    Lmin = Lij2(i,j)
                     j_min = j
 
             used_jj.add(j_min)
             minSumSeries[i] = Lmin
 
         return math.fsum(minSumSeries)
-
 
 
     def scalar_cmp_L(self,baseSignal):
@@ -117,11 +117,6 @@ class ModelSignal():
         N = len(baseSignal.Currents)
         norm1 = np.max(baseSignal.Currents)-np.min(baseSignal.Currents)
         return math.fsum(sub*sub)/(N*N*norm1*norm1)
-
-    def scalar_cmp(self,baseSignal):
-        #return self.scalar_cmp_L2(baseSignal)
-        return self.scalar_cmp_xy2(baseSignal)
-        #return self.scalar_cmp_xy(baseSignal)
 
     def get_loss_row(self,baseSignal):
         return [self.scalar_cmp_L(baseSignal),self.scalar_cmp_L2(baseSignal)]

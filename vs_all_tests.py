@@ -81,7 +81,7 @@ class test_ClassModel_Rphase(unittest.TestCase):
         self.assertTrue(True)
         
 
-#@unittest.skip("Skip test_ModelSignal")
+@unittest.skip("Skip test_ModelSignal")
 class test_Model_scalar_optimization(unittest.TestCase):
     def test_scalar_optimization_R1R2R3(self):
         modelA = vs_ClassModel.ClassModel_R1R2R3()
@@ -186,6 +186,12 @@ class test_CInteractivePlot(unittest.TestCase):
         out.end()
 
         self.assertTrue(True)
+
+#@unittest.skip("Skip test_ModelSignal")
+class test_dataset(unittest.TestCase):
+    def test_lookForNearestSignal(self):
+        res = G.dataset.lookForNearestSignal(G.targetSignal)
+        print(res)
 
 if __name__=='__main__':
     vs_electronics_main.init()
