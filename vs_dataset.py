@@ -43,7 +43,7 @@ class vs_dataset:
             if v<minVal:
                 minVal = v
                 minFile = sfile
-                
+          
         
         return minFile,minVal
 

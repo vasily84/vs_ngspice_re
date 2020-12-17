@@ -34,8 +34,8 @@ class ClassModel():
         self.plt = vs_plot.InteractivePlot()
         self.plt.begin()
         self.runCounter = 0 # счетчик числа вызовов минимизируемой
-        Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,bounds=self.Xi_bounds)
-        #Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,method='Powell')
+        #Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,bounds=self.Xi_bounds)
+        Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,method='Powell')
         self.plt.end()
         return Xres
 

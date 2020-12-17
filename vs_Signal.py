@@ -2,6 +2,92 @@ import numpy as np
 import scipy.fft as scf
 import math
 import vs_globals as G
+import numba
+
+@numba.njit
+def _scalar_cmp_xy(volt_a,curr_a,volt_b,curr_b):
+    N = len(volt_a)
+    norm_c = np.max(curr_b)-np.min(curr_b)
+    norm_v = np.max(volt_b)-np.min(volt_b)
+    # примитивная нормировка на '1'
+    volt_a = volt_a/norm_v
+    volt_b = volt_b/norm_v
+    curr_a = curr_a/norm_c
+    curr_b = curr_b/norm_c
+
+    # вычисляем сумму по наиболее близким
+    axis_jj = [_ for _ in range(N)]
+    Summ = 0.
+
+    for i in range(N):
+        first_j = True
+        for j in axis_jj:
+            if j<0:
+                continue    
+            
+            v1 = volt_a[i]
+            c1 = curr_a[i]
+            v2 = volt_b[j]
+            c2 = curr_b[j]
+            Lij = np.sqrt(((v1-v2))**2+((c1-c2))**2)
+            
+            if first_j:      
+                Lmin = Lij
+                j_min = j
+                first_j = False
+
+            elif Lij <Lmin:
+                Lmin = Lij
+                j_min = j
+
+        axis_jj[j_min]=-1 # маркер уже использованного индекса
+        Summ += Lmin
+
+    return Summ
+
+
+@numba.njit
+def _scalar_cmp_xy2(volt_a,curr_a,volt_b,curr_b):
+    N = len(volt_a)
+    norm_c = np.max(curr_b)-np.min(curr_b)
+    norm_v = np.max(volt_b)-np.min(volt_b)
+    # примитивная нормировка на '1'
+    volt_a = volt_a/norm_v
+    volt_b = volt_b/norm_v
+    curr_a = curr_a/norm_c
+    curr_b = curr_b/norm_c
+
+    # вычисляем сумму по наиболее близким
+    axis_jj = [_ for _ in range(N)]
+    Summ = 0.
+
+    for i in range(N):
+        first_j = True
+        for j in axis_jj:
+            if j<0:
+                continue    
+            
+            v1 = volt_a[i]
+            c1 = curr_a[i]
+            v2 = volt_b[j]
+            c2 = curr_b[j]
+
+            Lij = (v1-v2)**2+(c1-c2)**2
+            
+            if first_j:      
+                Lmin = Lij
+                j_min = j
+                first_j = False
+
+            elif Lij <Lmin:
+                Lmin = Lij
+                j_min = j
+
+        axis_jj[j_min]=-1 # маркер уже использованного индекса
+        Summ += Lmin
+
+    return Summ
+
 
 class ModelSignal():
     def __init__(self, title=''):
@@ -10,8 +96,8 @@ class ModelSignal():
         self.initWave() 
         self.Title = title 
         # функции меры, которая используется в скалярной оптимизации
-        #self.scalar_cmp = self.scalar_cmp_xy
-        self.scalar_cmp = self.scalar_cmp_L2
+        self.scalar_cmp = self.scalar_cmp_xy
+        #self.scalar_cmp = self.scalar_cmp_L2
     
     def initWave(self,V=G.signal_Voltage,dt=G.signal_dt ):
         p = G.signal_POINT_COUNT
@@ -32,72 +118,12 @@ class ModelSignal():
         np.savez(fileName,Voltages=self.Voltages,Currents=self.Currents)
 
     def scalar_cmp_xy(self,baseSignal):
-        N = len(self.Currents)
-        norm_c = np.max(baseSignal.Currents)-np.min(baseSignal.Currents)
-        norm_v = np.max(baseSignal.Voltages)-np.min(baseSignal.Voltages)
-
-        # расстояние в пространстве между точками
-        def Lij1(i,j):
-            v1 = self.Voltages[i]
-            c1 = self.Currents[i]
-            v2 = baseSignal.Voltages[j]
-            c2 = baseSignal.Currents[j]
-            res = np.sqrt(((v1-v2)/norm_v)**2+((c1-c2)/norm_c)**2)
-            return res
-
-        # вычисляем сумму по наиболее близким
-        used_jj = set()
-        minSumSeries = np.zeros_like(self.Currents)
-        for i in range(N):
-            setJ = (set(range(N))-used_jj)
-            j0 = setJ.pop()
-            setJ.add(j0)
-            Lmin = Lij1(i,j0)
-            j_min = j0
-            for j in setJ:                 
-                if Lij1(i,j) <Lmin:
-                    Lmin = Lij1(i,j)
-                    j_min = j
-
-            used_jj.add(j_min)
-            minSumSeries[i] = Lmin
-
-        return math.fsum(minSumSeries)
+        return _scalar_cmp_xy(self.Voltages,self.Currents,baseSignal.Voltages,baseSignal.Currents)
 
     
     def scalar_cmp_xy2(self,baseSignal):
-        """вычислить функцию потерь для шумного сигнала."""
-        N = len(self.Currents)
-        norm_c = np.max(baseSignal.Currents)-np.min(baseSignal.Currents)
-        norm_v = np.max(baseSignal.Voltages)-np.min(baseSignal.Voltages)
-        
-        # расстояние в пространстве между точками
-        def Lij2(i,j):
-            v1 = self.Voltages[i]
-            c1 = self.Currents[i]
-            v2 = baseSignal.Voltages[j]
-            c2 = baseSignal.Currents[j]
-            res = ((v1-v2)/norm_v)**2+((c1-c2)/norm_c)**2
-            return res
+        return _scalar_cmp_xy2(self.Voltages,self.Currents,baseSignal.Voltages,baseSignal.Currents)
 
-        # вычисляем сумму по наиболее близким
-        used_jj = set()
-        minSumSeries = np.zeros_like(self.Currents)
-        for i in range(N):
-            setJ = (set(range(N))-used_jj)
-            j0 = setJ.pop()
-            setJ.add(j0)
-            Lmin = Lij2(i,j0)
-            j_min = j0
-            for j in setJ:                 
-                if Lij2(i,j) <Lmin:
-                    Lmin = Lij2(i,j)
-                    j_min = j
-
-            used_jj.add(j_min)
-            minSumSeries[i] = Lmin
-
-        return math.fsum(minSumSeries)
 
 
     def scalar_cmp_L(self,baseSignal):
