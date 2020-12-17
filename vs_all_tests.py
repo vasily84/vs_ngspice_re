@@ -32,7 +32,7 @@ class test_ClassObject(unittest.TestCase):
         self.assertTrue(cmpDir)
 
 
-@unittest.skip("Skip test_ClassModel_R")
+#@unittest.skip("Skip test_ClassModel_R")
 class test_ClassModel_R(unittest.TestCase):
     def setUp(self):
         self.A = vs_ClassModel.ClassModel_R()
@@ -81,7 +81,7 @@ class test_ClassModel_Rphase(unittest.TestCase):
         self.assertTrue(True)
         
 
-@unittest.skip("Skip test_ModelSignal")
+#@unittest.skip("Skip test_ModelSignal")
 class test_Model_scalar_optimization(unittest.TestCase):
     def test_scalar_optimization_R1R2R3(self):
         modelA = vs_ClassModel.ClassModel_R1R2R3()
@@ -187,7 +187,7 @@ class test_CInteractivePlot(unittest.TestCase):
 
         self.assertTrue(True)
 
-#@unittest.skip("Skip test_ModelSignal")
+@unittest.skip("Skip test_ModelSignal")
 class test_dataset(unittest.TestCase):
     def test_lookForNearestSignal(self):
         res = G.dataset.lookForNearestSignal(G.targetSignal)

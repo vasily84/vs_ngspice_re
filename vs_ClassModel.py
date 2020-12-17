@@ -1,8 +1,10 @@
 import numpy as np
+import numba
 import scipy.optimize as spo
 import json
 
 from vs_utils import uuid_str
+from vs_ClassObject import ClassObject
 import vs_globals as G
 import vs_Signal
 import vs_plot
@@ -10,70 +12,9 @@ import vs_plot
 
 # pylint: disable=E1101 # игнор линтинга numpy
 
-class ClassModel():
-    def run_simulation(self,VCSignal=None):
-        if VCSignal is None:
-            VCSignal = G.modelSignal
-
-        self.save_model_file()
-        self.evaluate_model(VCSignal)
-        Noise = G.signal_CurrentNoiseAmplitude*np.random.rand(len(VCSignal.Currents))
-        VCSignal.Currents = Noise+VCSignal.Currents
-        VCSignal.save(self.signalFileName)
-        
-        row = [self.baseName]+VCSignal.get_features_row()
-        row.append(self.kind)
-        Loss = VCSignal.get_loss_row(G.targetSignal)
-        row = row+Loss
-        G.dataset.writerow(row)
-        
-        self.simulationResult = VCSignal
-
-
-    def run_scalar_optimization(self):
-        self.plt = vs_plot.InteractivePlot()
-        self.plt.begin()
-        self.runCounter = 0 # счетчик числа вызовов минимизируемой
-        #Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,bounds=self.Xi_bounds)
-        Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,method='Powell')
-        self.plt.end()
-        return Xres
-
-    def optimization_subroutine(self,Xi):
-        self.newFileName()
-        self.setXi(Xi)
-        self.run_simulation()
-        XLoss = self.simulationResult.scalar_cmp(G.targetSignal)
-        self.runCounter += 1 
-
-        if(self.runCounter == 1): # это первый вызов
-            self.minXLoss = XLoss
-
-        if(XLoss < self.minXLoss):
-            self.minXLoss = XLoss
-
-        self.plt.plot(G.modelSignal,G.targetSignal)
-            
-
-        return XLoss
-    
-    def save_model_file(self):
-        with open(self.fileName, 'w') as newFile:   
-            json.dump(self.to_list(),newFile)   
-
-    def load_model_from_file(self):   
-        with open(self.fileName, "r") as read_file:
-            json_list = json.load(read_file) 
-        self.from_list(json_list)
-     
-    def newFileName(self):
-        self.baseName = uuid_str()
-        self.fileName = self.baseName+".m_json"
-        self.signalFileName = self.baseName+".npz"
-
+class ClassModel(ClassObject):
     def __init__(self):
-        self.newFileName()
-        #self.simulationResult = None
+        super().__init__()
 
 class ClassModel_R(ClassModel):
     def __init__(self, R1=100):
@@ -99,6 +40,7 @@ class ClassModel_R(ClassModel):
     def init_starts_from_signal(self,VCSignal):
         """найти НУ для схемы исходя из сигнала"""
         self.R1 = 200 #!! # еще не реализовано
+
 
 class ClassModel_Rphase(ClassModel):
     def __init__(self, R1=100,phase=0):
@@ -155,13 +97,19 @@ class ClassModel_RD(ClassModel):
     def setXi(self,Xi):
         self.R2 = Xi[0]
 
-    def evaluate_model(self,VCSignal):
+    @staticmethod
+    @numba.njit
+    def _evaluate_model(R2,volt,curr):
         # переписать #
-        VCSignal.Currents[:] = 0.
-        for i in range(len(VCSignal.Voltages)):
-            v = VCSignal.Voltages[i]
+        curr[:] = 0.
+        for i in range(len(volt)):
+            v = volt[i]
             if v>=G.DIODE_VOLTAGE:
-                VCSignal.Currents[i] = (v-G.DIODE_VOLTAGE)/self.R2
+                curr[i] = (v-G.DIODE_VOLTAGE)/R2
+
+    def evaluate_model(self,VCSignal):
+        return self._evaluate_model(self.R2,VCSignal.Voltages,VCSignal.Currents)
+
         
 class ClassModel_DR(ClassModel):
     def __init__(self, R3=100):
@@ -181,14 +129,19 @@ class ClassModel_DR(ClassModel):
     def setXi(self,Xi):
         self.R3 = Xi[0]
 
-    def evaluate_model(self,VCSignal):
+    @staticmethod
+    @numba.njit
+    def _evaluate_model(R3,volt,curr):
         # переписать #
-        VCSignal.Currents[:] = 0.
-        for i in range(len(VCSignal.Voltages)):
-            v = VCSignal.Voltages[i]
+        curr[:] = 0.
+        for i in range(len(volt)):
+            v = volt[i]
             if v<=-G.DIODE_VOLTAGE:
-                VCSignal.Currents[i] = (v+G.DIODE_VOLTAGE)/self.R3
-
+                curr[i] = (v+G.DIODE_VOLTAGE)/R3
+    
+    def evaluate_model(self,VCSignal):
+        return self._evaluate_model(self.R3,VCSignal.Voltages,VCSignal.Currents)
+        
 class ClassModel_R1R2R3(ClassModel):
     def __init__(self, R1=100,R2=100,R3=100):
         super().__init__()
@@ -213,33 +166,39 @@ class ClassModel_R1R2R3(ClassModel):
         self.R2 = Xi[1]
         self.R3 = Xi[2]
  
-    def evaluate_model(self,VCSignal):
-        for i in range(len(VCSignal.Voltages)):
-            v = VCSignal.Voltages[i]
-            VCSignal.Currents[i] = self.I_from_VR1R2R3(v,self.R1,self.R2,self.R3)
-                       
-    # ток через нашу упрощенную цепь - подробности см. в проекте vs_spice_solver
-    def I_from_VR1R2R3(self,V,R1,R2,R3):
-        I = V/(R2)
-        V2 = R2*I
-        INIT_Rcs = 0. 
+    @staticmethod
+    @numba.njit               
+    def _evaluate_model(R1,R2,R3,volt,curr):
+        for i in range(len(volt)):
+            v = volt[i]
+            curr[i] = _I_from_VR1R2R3(v,R1,R2,R3)
 
-        # диод VD1 открыт
-        if V2>=G.DIODE_VOLTAGE:
-            up_part = V*(R1+R2)-R2*G.DIODE_VOLTAGE
-            down_part = R1*R2+R1*INIT_Rcs+R2*INIT_Rcs
-            Id = up_part/down_part
-            return Id
-        
-        # диод VD3 открыт
-        if V2 <=-G.DIODE_VOLTAGE:
-            up_part = V*(R3+R2)+R2*G.DIODE_VOLTAGE
-            down_part = R3*R2+R3*INIT_Rcs+R2*INIT_Rcs
-            Id = up_part/down_part
-            return Id
-        
-        # случай, когда диоды VD1 и VD3 закрыты - просто закон ома
-        return I
+    def evaluate_model(self,VCSignal):
+        return self._evaluate_model(self.R1,self.R2,self.R3,VCSignal.Voltages,VCSignal.Currents)
+
+# ток через нашу упрощенную цепь - подробности см. в проекте vs_spice_solver    
+@numba.njit
+def _I_from_VR1R2R3(V,R1,R2,R3):
+    I = V/(R2)
+    V2 = R2*I
+    INIT_Rcs = 0. 
+
+    # диод VD1 открыт
+    if V2>=G.DIODE_VOLTAGE:
+        up_part = V*(R1+R2)-R2*G.DIODE_VOLTAGE
+        down_part = R1*R2+R1*INIT_Rcs+R2*INIT_Rcs
+        Id = up_part/down_part
+        return Id
+    
+    # диод VD3 открыт
+    if V2 <=-G.DIODE_VOLTAGE:
+        up_part = V*(R3+R2)+R2*G.DIODE_VOLTAGE
+        down_part = R3*R2+R3*INIT_Rcs+R2*INIT_Rcs
+        Id = up_part/down_part
+        return Id
+    
+    # случай, когда диоды VD1 и VD3 закрыты - просто закон ома
+    return I
 
 
 
