@@ -30,20 +30,26 @@ class vs_dataset:
             self.writerow(title)
 
     
-    def lookForNearestSignal(self,targetSignal):
+    def lookForNearestSignal(self,targetSignal,epsilon=0.,maxcount=None):
         """ просканировать записи на предмет поиска наиболее 
         похожего сигнала """
         allFiles = os.listdir()
         signalFiles = [i for i in allFiles if i.endswith('.npz')]
+        if maxcount is not None:
+            if len(signalFiles)>maxcount:
+                signalFiles = signalFiles[:maxcount]
+
         minFile = signalFiles[0]
         minVal = self.signalFile_scalar_cmp(minFile,targetSignal) 
+        
         for sfile in signalFiles:
             v = self.signalFile_scalar_cmp(sfile,targetSignal)
             print(sfile+" "+str(v))
             if v<minVal:
                 minVal = v
                 minFile = sfile
-          
+            if v<=epsilon:
+                break
         
         return minFile,minVal
 

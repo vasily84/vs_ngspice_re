@@ -6,20 +6,22 @@ import numba
 
 @numba.njit
 def _scalar_cmp_xy(volt_a,curr_a,volt_b,curr_b):
-    N = len(volt_a)
-    norm_c = np.max(curr_b)-np.min(curr_b)
-    norm_v = np.max(volt_b)-np.min(volt_b)
+    lenA = len(volt_a)
+    lenB = len(volt_b)
+    norm_N = min(lenA,lenB)
+    norm_c = (np.max(curr_b)-np.min(curr_b))
+    norm_v = (np.max(volt_b)-np.min(volt_b))
     # примитивная нормировка на '1'
-    volt_a = volt_a/norm_v
-    volt_b = volt_b/norm_v
-    curr_a = curr_a/norm_c
-    curr_b = curr_b/norm_c
+    volt_a = volt_a/(norm_v*norm_N)
+    volt_b = volt_b/(norm_v*norm_N)
+    curr_a = curr_a/(norm_c*norm_N)
+    curr_b = curr_b/(norm_c*norm_N)
 
     # вычисляем сумму по наиболее близким
-    axis_jj = [_ for _ in range(N)]
+    axis_jj = [_ for _ in range(lenB)]
     Summ = 0.
 
-    for i in range(N):
+    for i in range(lenA):
         first_j = True
         for j in axis_jj:
             if j<0:
@@ -48,20 +50,22 @@ def _scalar_cmp_xy(volt_a,curr_a,volt_b,curr_b):
 
 @numba.njit
 def _scalar_cmp_xy2(volt_a,curr_a,volt_b,curr_b):
-    N = len(volt_a)
-    norm_c = np.max(curr_b)-np.min(curr_b)
-    norm_v = np.max(volt_b)-np.min(volt_b)
+    lenA = len(volt_a)
+    lenB = len(volt_b)
+    norm_N = min(lenA,lenB)
+    norm_c = (np.max(curr_b)-np.min(curr_b))
+    norm_v = (np.max(volt_b)-np.min(volt_b))
     # примитивная нормировка на '1'
-    volt_a = volt_a/norm_v
-    volt_b = volt_b/norm_v
-    curr_a = curr_a/norm_c
-    curr_b = curr_b/norm_c
+    volt_a = volt_a/(norm_v*norm_N)
+    volt_b = volt_b/(norm_v*norm_N)
+    curr_a = curr_a/(norm_c*norm_N)
+    curr_b = curr_b/(norm_c*norm_N)
 
     # вычисляем сумму по наиболее близким
-    axis_jj = [_ for _ in range(N)]
+    axis_jj = [_ for _ in range(lenB)]
     Summ = 0.
 
-    for i in range(N):
+    for i in range(lenA):
         first_j = True
         for j in axis_jj:
             if j<0:
@@ -85,22 +89,22 @@ def _scalar_cmp_xy2(volt_a,curr_a,volt_b,curr_b):
 
         axis_jj[j_min]=-1 # маркер уже использованного индекса
         Summ += Lmin
-
     return Summ
 
 
 class ModelSignal():
-    def __init__(self, title=''):
-        self.Voltages = np.zeros(G.signal_POINT_COUNT)
+    def __init__(self, title='',Points=None):
+        if Points is None:
+            Points = G.signal_POINT_COUNT
+        self.Voltages = np.zeros(Points)
         self.Currents = np.zeros_like(self.Voltages)
         self.initWave() 
         self.Title = title 
         # функции меры, которая используется в скалярной оптимизации
-        self.scalar_cmp = self.scalar_cmp_xy
-        #self.scalar_cmp = self.scalar_cmp_L2
+        self.scalar_cmp = self.scalar_cmp_xy2
     
     def initWave(self,V=G.signal_Voltage,dt=G.signal_dt ):
-        p = G.signal_POINT_COUNT
+        p = len(self.Voltages)
         wtime = np.linspace(0,2.*np.pi,p,False)
         self.Voltages = V*np.sin(wtime)
         self.Currents = np.zeros_like(self.Voltages)
@@ -118,10 +122,11 @@ class ModelSignal():
         np.savez(fileName,Voltages=self.Voltages,Currents=self.Currents)
 
     def scalar_cmp_xy(self,baseSignal):
+        """ функция сравнения двух сигналов. линейная """
         return _scalar_cmp_xy(self.Voltages,self.Currents,baseSignal.Voltages,baseSignal.Currents)
 
-    
     def scalar_cmp_xy2(self,baseSignal):
+        """ функция сравнения двух сигналов. квадратичная """
         return _scalar_cmp_xy2(self.Voltages,self.Currents,baseSignal.Voltages,baseSignal.Currents)
 
 
@@ -145,7 +150,7 @@ class ModelSignal():
         return math.fsum(sub*sub)/(N*N*norm1*norm1)
 
     def get_loss_row(self,baseSignal):
-        return [self.scalar_cmp_L(baseSignal),self.scalar_cmp_L2(baseSignal)]
+        return [self.scalar_cmp_xy(baseSignal),self.scalar_cmp_xy2(baseSignal)]
     
     def get_features_row(self):
         """ измерить признаки сигнала """

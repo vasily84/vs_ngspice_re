@@ -81,25 +81,26 @@ class test_ClassModel_Rphase(unittest.TestCase):
         self.assertTrue(True)
         
 
-@unittest.skip("Skip test_ModelSignal")
+#@unittest.skip("Skip test_ModelSignal")
 class test_Model_scalar_optimization(unittest.TestCase):
     def test_scalar_optimization_R1R2R3(self):
         modelA = vs_ClassModel.ClassModel_R1R2R3()
         targetModel = vs_ClassModel.ClassModel_R1R2R3()
 
-        G.targetSignal = vs_Signal.ModelSignal('target')
+        G.targetSignal = vs_Signal.ModelSignal('target',Points=100)
         #targetModel = vs_ClassModel.ClassModel_DR()
         r1 = G.small_R+np.random.random()*1e3
         r2 = G.small_R+np.random.random()*1e3
         r3 = G.small_R+np.random.random()*1e3
         targetModel.setXi([r1,r2,r3])
         targetModel.run_simulation(G.targetSignal)
-        G.modelSignal = vs_Signal.ModelSignal('model')
-        G.modelSignal.copy(G.targetSignal)
+        G.modelSignal = vs_Signal.ModelSignal('model',Points=200)
+        #G.modelSignal.copy(G.targetSignal)
         G.modelSignal.Currents[:] = 0
         xres = modelA.run_scalar_optimization()
         self.assertTrue(xres.success)
 
+    #@unittest.skip("")
     def child_scalar_optimization_1d(self,modelA,targetModel):
         G.targetSignal = vs_Signal.ModelSignal('target')
         targetModel.setXi([G.small_R+np.random.random()*1e3])
@@ -110,18 +111,21 @@ class test_Model_scalar_optimization(unittest.TestCase):
         xres = modelA.run_scalar_optimization()
         return xres
 
+    #@unittest.skip("")
     def test_scalar_optimization_R(self):
         A = vs_ClassModel.ClassModel_R()
         target = vs_ClassModel.ClassModel_R()
         xres = self.child_scalar_optimization_1d(A,target)
         self.assertTrue(xres.success)
 
+    #@unittest.skip("")
     def test_scalar_optimization_RD(self):
         A = vs_ClassModel.ClassModel_DR()
         target = vs_ClassModel.ClassModel_DR()
         xres = self.child_scalar_optimization_1d(A,target)
         self.assertTrue(xres.success)
 
+    #@unittest.skip("")
     def test_scalar_optimization_DR(self):
         A = vs_ClassModel.ClassModel_DR()
         target = vs_ClassModel.ClassModel_DR()
@@ -164,13 +168,8 @@ class test_ModelSignal(unittest.TestCase):
         self.assertTrue(True)
 
 
-
-#@unittest.skip("Skip test_ModelSignal")
+@unittest.skip("Skip test_ModelSignal")
 class test_CInteractivePlot(unittest.TestCase):
-    @unittest.skip("")
-    def test_3(self):
-        vs_plot.run_anim()
-
     #@unittest.skip("")
     def test_2(self):
         modelA = vs_ClassModel.ClassModel_R1R2R3()
@@ -187,9 +186,9 @@ class test_CInteractivePlot(unittest.TestCase):
         targetModel.run_simulation(signalModel)
 
         out = vs_plot.InteractivePlot()
-        out.begin()
+        out.begin("test1.mp4")
 
-        for _ in range(10):
+        for _ in range(30):
             r1 = G.small_R+np.random.random()*1e3
             r2 = G.small_R+np.random.random()*1e3
             r3 = G.small_R+np.random.random()*1e3
@@ -228,6 +227,15 @@ class test_dataset(unittest.TestCase):
     def test_lookForNearestSignal(self):
         res = G.dataset.lookForNearestSignal(G.targetSignal)
         print(res)
+
+    def test_epsilon(self): 
+        res = G.dataset.lookForNearestSignal(G.targetSignal,epsilon=0.1)
+        print(res)
+
+    def test_maxcount(self):
+        res = G.dataset.lookForNearestSignal(G.targetSignal,maxcount=10)
+        print(res)
+
 
 if __name__=='__main__':
     vs_electronics_main.init()

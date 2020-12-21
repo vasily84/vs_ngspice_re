@@ -26,12 +26,15 @@ class InteractivePlot():
         plt.draw() # перерисовка, обновление
         plt.gcf().canvas.flush_events()  
         if self.movieFileName is not None:
-            plt.savefig("file%02d.png" % self.frameCount)
+            fname = "framefile_%08d.png" % self.frameCount
+            plt.savefig(fname)
+            self.pngFiles.append(fname)
         self.frameCount+=1
 
     def begin(self,movieFileName=None):
         self.movieFileName = movieFileName
         self.frameCount = 0
+        self.pngFiles = []
         plt.ion()
         plt.figure(1, (10, 5))
         plt.grid()
@@ -39,10 +42,13 @@ class InteractivePlot():
     def end(self):
         plt.ioff()
         if self.movieFileName is not None:
+            if os.path.isfile(self.movieFileName):
+                os.remove(self.movieFileName)
+
             subprocess.call([
-            'ffmpeg', '-framerate', '8', '-i', 'file%02d.png', '-r', '30', '-pix_fmt', 'yuv420p',
+            'ffmpeg', '-framerate', '8', '-i', 'framefile_%08d.png', '-r', '30', '-pix_fmt', 'yuv420p',
             self.movieFileName])
-            for file_name in glob.glob("*.png"):
+            for file_name in self.pngFiles: #glob.glob("*.png"):
                 os.remove(file_name)
-                #plt.show()
+            #plt.show()
                 

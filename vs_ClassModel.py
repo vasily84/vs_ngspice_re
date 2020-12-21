@@ -39,7 +39,14 @@ class ClassModel_R(ClassModel):
 
     def init_starts_from_signal(self,VCSignal):
         """найти НУ для схемы исходя из сигнала"""
-        self.R1 = 200 #!! # еще не реализовано
+        I = np.max(VCSignal.Currents)
+        V = np.max(VCSignal.Voltages)
+
+        try:
+            self.R1 = V/I
+        except ZeroDivisionError:
+            self.R1 = 100
+
 
 
 class ClassModel_Rphase(ClassModel):
@@ -60,7 +67,7 @@ class ClassModel_Rphase(ClassModel):
         self.phase = json_list["phase"]
    
     def setXi(self,Xi):
-        self.R1 = Xi[0]
+        self.R1 = np.abs(Xi[0])
         self.phase = Xi[1]
 
     def evaluate_model(self,VCSignal):
@@ -76,7 +83,13 @@ class ClassModel_Rphase(ClassModel):
 
     def init_starts_from_signal(self,VCSignal):
         """найти НУ для схемы исходя из сигнала"""
-        self.R1 = 200 #!! # еще не реализовано
+        I = np.max(VCSignal.Currents)
+        V = np.max(VCSignal.Voltages)
+
+        try:
+            self.R1 = V/I
+        except ZeroDivisionError:
+            self.R1 = 100
 
 
 class ClassModel_RD(ClassModel):
@@ -100,7 +113,7 @@ class ClassModel_RD(ClassModel):
     @staticmethod
     @numba.njit
     def _evaluate_model(R2,volt,curr):
-        # переписать #
+        R2 = np.abs(R2)
         curr[:] = 0.
         for i in range(len(volt)):
             v = volt[i]
@@ -110,7 +123,15 @@ class ClassModel_RD(ClassModel):
     def evaluate_model(self,VCSignal):
         return self._evaluate_model(self.R2,VCSignal.Voltages,VCSignal.Currents)
 
-        
+    def init_starts_from_signal(self,VCSignal):
+        """найти НУ для схемы исходя из сигнала"""
+        I = np.max(VCSignal.Currents)
+        V = np.max(VCSignal.Voltages)-G.DIODE_VOLTAGE
+        try:
+            self.R2 = V/I
+        except ZeroDivisionError:
+            self.R2 = 100
+
 class ClassModel_DR(ClassModel):
     def __init__(self, R3=100):
         super().__init__()
@@ -132,7 +153,7 @@ class ClassModel_DR(ClassModel):
     @staticmethod
     @numba.njit
     def _evaluate_model(R3,volt,curr):
-        # переписать #
+        R3 = np.abs(R3)
         curr[:] = 0.
         for i in range(len(volt)):
             v = volt[i]
@@ -141,7 +162,16 @@ class ClassModel_DR(ClassModel):
     
     def evaluate_model(self,VCSignal):
         return self._evaluate_model(self.R3,VCSignal.Voltages,VCSignal.Currents)
-        
+
+    def init_starts_from_signal(self,VCSignal):
+        """найти НУ для схемы исходя из сигнала"""
+        I = np.min(VCSignal.Currents)
+        V = np.min(VCSignal.Voltages)+G.DIODE_VOLTAGE
+        try:
+            self.R3 = V/I
+        except ZeroDivisionError:
+            self.R3 = 100
+
 class ClassModel_R1R2R3(ClassModel):
     def __init__(self, R1=100,R2=100,R3=100):
         super().__init__()
@@ -153,7 +183,7 @@ class ClassModel_R1R2R3(ClassModel):
         self.kind = 'R1R2R3'
 
     def to_list(self):
-        json_list = {"model_type":"R1r2r3","R1":self.R1,"R2":self.R2,"R3":self.R3}
+        json_list = {"model_type":"R1R2R3","R1":self.R1,"R2":self.R2,"R3":self.R3}
         return json_list
 
     def from_list(self,json_list):
@@ -169,12 +199,34 @@ class ClassModel_R1R2R3(ClassModel):
     @staticmethod
     @numba.njit               
     def _evaluate_model(R1,R2,R3,volt,curr):
+        R1 = np.abs(R1)
+        R2 = np.abs(R2)
+        R3 = np.abs(R3)
         for i in range(len(volt)):
             v = volt[i]
             curr[i] = _I_from_VR1R2R3(v,R1,R2,R3)
 
     def evaluate_model(self,VCSignal):
         return self._evaluate_model(self.R1,self.R2,self.R3,VCSignal.Voltages,VCSignal.Currents)
+
+    def init_starts_from_signal(self,VCSignal):
+        """найти НУ для схемы исходя из сигнала"""
+        I2 = np.max(VCSignal.Currents)
+        V2 = np.max(VCSignal.Voltages)-G.DIODE_VOLTAGE
+        I3 = np.min(VCSignal.Currents)
+        V3 = np.min(VCSignal.Voltages)+G.DIODE_VOLTAGE
+        
+        try:
+            self.R2 = V2/I2
+        except ZeroDivisionError:
+            self.R2 = 100
+
+        try:
+            self.R3 = V3/I3
+        except ZeroDivisionError:
+            self.R3 = 100
+
+        self.R1 = (self.R1+self.R3)/2
 
 # ток через нашу упрощенную цепь - подробности см. в проекте vs_spice_solver    
 @numba.njit
