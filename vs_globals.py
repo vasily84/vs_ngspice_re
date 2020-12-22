@@ -9,6 +9,7 @@ signal_Voltage = 2.5
 signal_POINT_COUNT = 100
 signal_dt = 1e-5
 signal_CurrentNoiseAmplitude = 1e-3
+signal_VoltageNoiseAmplitude = 1e-2
 
 targetSignal = None
 modelSignal = None

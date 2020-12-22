@@ -9,7 +9,6 @@ import vs_globals as G
 import vs_Signal
 import vs_plot
 
-
 # pylint: disable=E1101 # игнор линтинга numpy
 
 class ClassModel(ClassObject):

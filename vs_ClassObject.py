@@ -17,8 +17,10 @@ class ClassObject():
 
         self.save_model_file()
         self.evaluate_model(VCSignal)
-        Noise = G.signal_CurrentNoiseAmplitude*np.random.rand(len(VCSignal.Currents))
-        VCSignal.Currents = Noise+VCSignal.Currents
+        NoiseC = G.signal_CurrentNoiseAmplitude*(np.random.rand(len(VCSignal.Currents))-0.5)
+        NoiseV = G.signal_VoltageNoiseAmplitude*(np.random.rand(len(VCSignal.Voltages))-0.5)
+        VCSignal.Currents = NoiseC+VCSignal.Currents
+        VCSignal.Voltages = NoiseV+VCSignal.Voltages
         VCSignal.save(self.signalFileName)
         
         row = [self.baseName]+VCSignal.get_features_row()
@@ -38,6 +40,9 @@ class ClassObject():
         self.runCounter = 0 # счетчик числа вызовов минимизируемой
         #Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,bounds=self.Xi_bounds)
         Xres = spo.minimize(self.optimization_subroutine,self.Xi_values,method='Powell')
+        #Xres = spo.shgo(self.optimization_subroutine,bounds=self.Xi_bounds)
+        #Xres = spo.basinhopping(self.optimization_subroutine,self.Xi_values)
+        
         self.plt.end()
         return Xres
 
